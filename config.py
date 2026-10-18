@@ -3,33 +3,24 @@ config.py
 ---------
 Central configuration module.
 
-Reads credentials from:
-  1. Streamlit secrets (st.secrets) — used when deployed on Streamlit Community Cloud.
-  2. .env file (via python-dotenv) — used for local development.
+Reads environment variables from a .env file (via python-dotenv) and
+exposes them as module-level constants that every other module imports.
 Never import credentials anywhere else directly.
 """
 
 import os
 from dotenv import load_dotenv
 
-# Load .env for local development (no-op if file doesn't exist)
+# Load the .env file from the project root (same directory as this file).
 load_dotenv()
 
-def _get(key: str, default: str = "") -> str:
-    """Read from Streamlit secrets first, then env vars, then default."""
-    try:
-        import streamlit as st
-        return st.secrets.get(key, os.getenv(key, default))
-    except Exception:
-        return os.getenv(key, default)
-
 # ── MongoDB ────────────────────────────────────────────────────────────────────
-MONGO_URI: str = _get("MONGO_URI", "mongodb://localhost:27017")
-MONGO_DB_NAME: str = _get("MONGO_DB_NAME", "foodrescue")
+MONGO_URI: str = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+MONGO_DB_NAME: str = os.getenv("MONGO_DB_NAME", "foodrescue")
 
 # ── Application ────────────────────────────────────────────────────────────────
-APP_SECRET: str = _get("APP_SECRET", "dev_secret_change_me")
-APP_ENV: str = _get("APP_ENV", "development")
+APP_SECRET: str = os.getenv("APP_SECRET", "dev_secret_change_me")
+APP_ENV: str = os.getenv("APP_ENV", "development")
 
 # ── Domain constants ──────────────────────────────────────────────────────────
 # Allowed values for the food_listings.category field

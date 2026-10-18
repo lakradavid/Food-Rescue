@@ -1,6 +1,5 @@
-pymongo[srv]>=4.6,<5.0
-streamlit>=1.32.0
-plotly>=5.20.0
-python-dotenv>=1.0.1
-bcrypt>=4.1.2
-pandas>=2.2.0
+fastapi==0.111.0
+mangum==0.17.0
+pymongo[srv]==4.6.3
+python-dotenv==1.0.1
+bcrypt==4.1.2

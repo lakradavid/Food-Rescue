@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "static/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "api/index.py" },
+    { "src": "/(.*)",     "dest": "static/$1" }
+  ],
+  "env": {
+    "MONGO_URI":    "@mongo_uri",
+    "MONGO_DB_NAME": "@mongo_db_name",
+    "APP_SECRET":   "@app_secret"
+  }
+}

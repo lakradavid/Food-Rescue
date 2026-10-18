@@ -16,8 +16,11 @@ env/
 # Environment variables – never commit secrets
 .env
 
-# Streamlit – never commit real secrets
+# Streamlit (legacy – kept in case branch is checked out)
 .streamlit/secrets.toml
+
+# Vercel
+.vercel/
 
 # OS
 .DS_Store

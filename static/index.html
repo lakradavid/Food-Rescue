@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FoodRescue — Smart Food Waste Rescue System</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  * { font-family: 'Inter', sans-serif; }
+  body { background: #f8fafb; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .nav-item { transition: all .15s; }
+  .nav-item.active { background: rgba(125,255,176,.15); color: #7dffb0; font-weight: 600; }
+  .nav-item:hover:not(.active) { background: rgba(255,255,255,.08); }
+  .kpi-card { transition: transform .15s, box-shadow .15s; }
+  .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.1); }
+  .badge-available  { background:#d1fae5; color:#065f46; }
+  .badge-reserved   { background:#fef9c3; color:#713f12; }
+  .badge-rescued    { background:#dbeafe; color:#1e3a8a; }
+  .badge-expired    { background:#fee2e2; color:#7f1d1d; }
+  .badge-pending    { background:#fef9c3; color:#713f12; }
+  .badge-confirmed  { background:#dbeafe; color:#1e3a8a; }
+  .badge-completed  { background:#d1fae5; color:#065f46; }
+  .badge-cancelled  { background:#fee2e2; color:#7f1d1d; }
+  .spinner { border:3px solid #e5e7eb; border-top-color:#2e7d52; border-radius:50%; width:28px; height:28px; animation:spin .7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .toast { position:fixed; bottom:24px; right:24px; z-index:9999; padding:12px 20px; border-radius:10px; font-weight:500; font-size:.88rem; box-shadow:0 4px 16px rgba(0,0,0,.15); transform:translateY(80px); opacity:0; transition:all .3s; }
+  .toast.show { transform:translateY(0); opacity:1; }
+  .toast.success { background:#065f46; color:#d1fae5; }
+  .toast.error   { background:#7f1d1d; color:#fee2e2; }
+  input, select, textarea { outline:none; }
+  input:focus, select:focus, textarea:focus { ring: 2px; --tw-ring-color:#2e7d52; }
+  table { border-collapse:collapse; width:100%; }
+  th { background:#f9fafb; font-weight:600; font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; color:#6b7280; }
+  tr:hover td { background:#f0fdf4; }
+  .section-title { font-size:1.05rem; font-weight:700; color:#1a3c2e; border-bottom:2px solid #e5e7eb; padding-bottom:8px; margin-bottom:16px; }
+</style>
+</head>
+<body class="min-h-screen flex">
+
+<!-- ════════════════════════════════════════════════════
+     SIDEBAR
+════════════════════════════════════════════════════ -->
+<aside class="w-56 min-h-screen flex-shrink-0 flex flex-col"
+       style="background:linear-gradient(180deg,#1a3c2e 0%,#0f2419 100%);">
+  <!-- Logo -->
+  <div class="text-center py-6 px-4 border-b border-green-900">
+    <div class="text-4xl mb-1">🥗</div>
+    <div class="text-white font-bold text-lg tracking-tight">FoodRescue</div>
+    <div class="text-xs mt-1" style="color:#7fbf95;">Smart Food Waste Rescue</div>
+  </div>
+
+  <!-- Nav -->
+  <nav class="flex-1 py-4 px-3 space-y-1">
+    <button onclick="showPage('dashboard')" class="nav-item active w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-2.5" style="color:#d4edda;" data-page="dashboard">
+      <span>🏠</span> Home Dashboard
+    </button>
+    <button onclick="showPage('listings')" class="nav-item w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-2.5" style="color:#d4edda;" data-page="listings">
+      <span>📋</span> Manage Listings
+    </button>
+    <button onclick="showPage('browse')" class="nav-item w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-2.5" style="color:#d4edda;" data-page="browse">
+      <span>🔍</span> Browse Food
+    </button>
+    <button onclick="showPage('match')" class="nav-item w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-2.5" style="color:#d4edda;" data-page="match">
+      <span>🤖</span> Smart Matching
+    </button>
+    <button onclick="showPage('claims')" class="nav-item w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-2.5" style="color:#d4edda;" data-page="claims">
+      <span>🤝</span> Claims &amp; Pickup
+    </button>
+    <button onclick="showPage('analytics')" class="nav-item w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-2.5" style="color:#d4edda;" data-page="analytics">
+      <span>📊</span> Analytics
+    </button>
+    <button onclick="showPage('users')" class="nav-item w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-2.5" style="color:#d4edda;" data-page="users">
+      <span>👥</span> Users
+    </button>
+  </nav>
+
+  <!-- Footer -->
+  <div class="px-4 py-4 border-t border-green-900 text-xs leading-relaxed" style="color:#7fbf95;">
+    📚 CSE494 · NoSQL Databases<br>
+    🎓 B.Tech Computer Science<br>
+    🏫 Lovely Professional University
+  </div>
+</aside>
+
+<!-- ════════════════════════════════════════════════════
+     MAIN CONTENT
+════════════════════════════════════════════════════ -->
+<main class="flex-1 overflow-y-auto">
+
+<!-- ──────────────────────────────────────────────────
+     PAGE: DASHBOARD
+────────────────────────────────────────────────── -->
+<div id="page-dashboard" class="page active p-6">
+  <!-- Hero -->
+  <div class="rounded-2xl p-8 mb-6 text-white" style="background:linear-gradient(135deg,#1a3c2e,#2e7d52,#4caf78);">
+    <h1 class="text-3xl font-bold mb-1">🥗 FoodRescue</h1>
+    <p style="color:#b7dfc8;" class="text-base" id="hero-subtitle">Smart Food Waste Rescue &amp; Analytics System</p>
+  </div>
+
+  <!-- KPI row 1 -->
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4" id="kpi-row1">
+    <div class="col-span-5 flex justify-center"><div class="spinner"></div></div>
+  </div>
+  <!-- KPI row 2 -->
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6" id="kpi-row2"></div>
+
+  <!-- Estimate note -->
+  <div id="estimate-note" class="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 mb-6 hidden">
+    📌 <b>Estimate note:</b> Meal count uses <b>2.5 meals/kg</b>. Only kg-unit rescue records are counted.
+  </div>
+
+  <hr class="border-gray-200 mb-6" />
+
+  <!-- Charts row -->
+  <p class="section-title">📈 Visual Overview</p>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <div class="bg-black rounded-2xl p-4 shadow">
+      <canvas id="chart-trend" height="160"></canvas>
+    </div>
+    <div class="bg-black rounded-2xl p-4 shadow">
+      <canvas id="chart-category" height="160"></canvas>
+    </div>
+  </div>
+
+  <hr class="border-gray-200 mb-6" />
+
+  <!-- Status bars + unit bar -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white rounded-2xl p-5 shadow">
+      <p class="section-title">🎯 Claim Status Breakdown</p>
+      <div id="claim-bars"></div>
+    </div>
+    <div class="bg-black rounded-2xl p-5 shadow">
+      <p class="section-title" style="color:#7dffb0;">📦 Food Rescued by Unit</p>
+      <canvas id="chart-unit" height="120"></canvas>
+    </div>
+  </div>
+
+  <hr class="border-gray-200 mb-6" />
+
+  <!-- Urgency alerts -->
+  <p class="section-title">🚨 Urgent Pickups — Within 3 Hours</p>
+  <div id="urgency-alerts" class="mb-6"></div>
+
+  <hr class="border-gray-200 mb-6" />
+
+  <!-- Recent rescues -->
+  <p class="section-title">🕐 Recent Rescues</p>
+  <div id="recent-rescues" class="overflow-x-auto"></div>
+</div>
+
+
+<!-- ──────────────────────────────────────────────────
+     PAGE: MANAGE LISTINGS
+────────────────────────────────────────────────── -->
+<div id="page-listings" class="page p-6">
+  <h2 class="text-2xl font-bold text-green-900 mb-1">📋 Manage Listings</h2>
+  <p class="text-gray-500 text-sm mb-6">Create, view, edit or delete food listings.</p>
+
+  <!-- Tabs -->
+  <div class="flex gap-2 mb-6 border-b border-gray-200">
+    <button onclick="listingsTab('view')"  id="ltab-view"  class="ltab px-4 py-2 text-sm font-semibold border-b-2 border-green-700 text-green-700">📄 My Listings</button>
+    <button onclick="listingsTab('add')"   id="ltab-add"   class="ltab px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-green-700">➕ Add New</button>
+    <button onclick="listingsTab('edit')"  id="ltab-edit"  class="ltab px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-green-700">✏️ Edit</button>
+  </div>
+
+  <!-- View -->
+  <div id="lpanel-view">
+    <div class="flex items-center gap-3 mb-4">
+      <label class="text-sm font-medium text-gray-700">Filter by status:</label>
+      <select id="ls-status-filter" onchange="loadListings()" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
+        <option value="">All</option>
+        <option value="available">Available</option>
+        <option value="reserved">Reserved</option>
+        <option value="rescued">Rescued</option>
+        <option value="expired">Expired</option>
+      </select>
+      <button onclick="loadListings()" class="btn-primary text-sm px-3 py-1.5">🔄 Refresh</button>
+    </div>
+    <div id="listings-table" class="overflow-x-auto bg-white rounded-2xl shadow"></div>
+  </div>
+
+  <!-- Add -->
+  <div id="lpanel-add" class="hidden">
+    <div class="bg-white rounded-2xl shadow p-6 max-w-2xl">
+      <p class="section-title">Add New Food Listing</p>
+      <form id="form-add-listing" onsubmit="submitAddListing(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="md:col-span-2">
+          <label class="form-label">Food Title *</label>
+          <input name="title" required class="form-input w-full" placeholder="e.g. Dal Rice Combo" />
+        </div>
+        <div>
+          <label class="form-label">Category *</label>
+          <select name="category" required class="form-input w-full" id="select-category-add"></select>
+        </div>
+        <div>
+          <label class="form-label">Unit *</label>
+          <select name="unit" required class="form-input w-full" id="select-unit-add"></select>
+        </div>
+        <div>
+          <label class="form-label">Quantity *</label>
+          <input name="quantity" type="number" step="0.1" min="0.1" required class="form-input w-full" placeholder="e.g. 5" />
+        </div>
+        <div>
+          <label class="form-label">Pickup Location *</label>
+          <input name="pickup_location" required class="form-input w-full" placeholder="e.g. Block B Cafeteria" />
+        </div>
+        <div>
+          <label class="form-label">Prepared At *</label>
+          <input name="prepared_at" type="datetime-local" required class="form-input w-full" />
+        </div>
+        <div>
+          <label class="form-label">Pickup Deadline *</label>
+          <input name="pickup_deadline" type="datetime-local" required class="form-input w-full" />
+        </div>
+        <div class="md:col-span-2">
+          <label class="form-label">Donor *</label>
+          <select name="donor_id" required class="form-input w-full" id="select-donor-add"></select>
+        </div>
+        <div class="md:col-span-2">
+          <label class="form-label">Description</label>
+          <textarea name="description" rows="2" class="form-input w-full" placeholder="Optional details..."></textarea>
+        </div>
+        <div class="md:col-span-2">
+          <label class="form-label">Allergens (comma-separated)</label>
+          <input name="allergens" class="form-input w-full" placeholder="e.g. gluten, dairy" />
+        </div>
+        <div class="md:col-span-2 flex gap-3">
+          <button type="submit" class="btn-primary">✅ Create Listing</button>
+          <button type="reset" class="btn-secondary">Clear</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit -->
+  <div id="lpanel-edit" class="hidden">
+    <div class="bg-white rounded-2xl shadow p-6 max-w-2xl">
+      <p class="section-title">Edit a Listing</p>
+      <div class="mb-4">
+        <label class="form-label">Select Listing to Edit</label>
+        <select id="edit-listing-select" onchange="loadEditListing()" class="form-input w-full max-w-md">
+          <option value="">— choose —</option>
+        </select>
+      </div>
+      <form id="form-edit-listing" onsubmit="submitEditListing(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
+        <div class="md:col-span-2">
+          <label class="form-label">Food Title</label>
+          <input id="edit-title" name="title" class="form-input w-full" />
+        </div>
+        <div>
+          <label class="form-label">Category</label>
+          <select id="edit-category" name="category" class="form-input w-full"></select>
+        </div>
+        <div>
+          <label class="form-label">Unit</label>
+          <select id="edit-unit" name="unit" class="form-input w-full"></select>
+        </div>
+        <div>
+          <label class="form-label">Pickup Location</label>
+          <input id="edit-location" name="pickup_location" class="form-input w-full" />
+        </div>
+        <div>
+          <label class="form-label">Pickup Deadline</label>
+          <input id="edit-deadline" name="pickup_deadline" type="datetime-local" class="form-input w-full" />
+        </div>
+        <div class="md:col-span-2">
+          <label class="form-label">Description</label>
+          <textarea id="edit-desc" name="description" rows="2" class="form-input w-full"></textarea>
+        </div>
+        <div class="md:col-span-2 flex gap-3">
+          <button type="submit" class="btn-primary">💾 Save Changes</button>
+          <button type="button" onclick="deleteListing()" class="btn-danger">🗑 Delete</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+<!-- ──────────────────────────────────────────────────
+     PAGE: BROWSE FOOD
+────────────────────────────────────────────────── -->
+<div id="page-browse" class="page p-6">
+  <h2 class="text-2xl font-bold text-green-900 mb-1">🔍 Browse Available Food</h2>
+  <p class="text-gray-500 text-sm mb-6">Find surplus food near you.</p>
+  <div class="flex flex-wrap gap-3 mb-5">
+    <select id="browse-status" class="form-input" onchange="loadBrowse()">
+      <option value="available">Available</option>
+      <option value="">All Statuses</option>
+      <option value="reserved">Reserved</option>
+      <option value="rescued">Rescued</option>
+      <option value="expired">Expired</option>
+    </select>
+    <select id="browse-category" class="form-input" onchange="loadBrowse()">
+      <option value="">All Categories</option>
+    </select>
+    <input id="browse-location" class="form-input" placeholder="🔍 Location keyword..." oninput="loadBrowse()" />
+    <button onclick="loadBrowse()" class="btn-primary text-sm px-3 py-1.5">🔄 Refresh</button>
+  </div>
+  <div id="browse-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"></div>
+</div>
+
+
+<!-- ──────────────────────────────────────────────────
+     PAGE: SMART MATCHING
+────────────────────────────────────────────────── -->
+<div id="page-match" class="page p-6">
+  <h2 class="text-2xl font-bold text-green-900 mb-1">🤖 Smart Matching</h2>
+  <p class="text-gray-500 text-sm mb-6">Rule-based engine scores listings by your preferences.</p>
+  <div class="bg-white rounded-2xl shadow p-5 max-w-lg mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div>
+        <label class="form-label">Preferred Category</label>
+        <select id="match-category" class="form-input w-full">
+          <option value="">Any</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Location Keyword</label>
+        <input id="match-location" class="form-input w-full" placeholder="e.g. Block B" />
+      </div>
+      <div>
+        <label class="form-label">Top N Results</label>
+        <input id="match-topn" type="number" value="10" min="1" max="50" class="form-input w-full" />
+      </div>
+    </div>
+    <button onclick="runMatch()" class="btn-primary">🔍 Find Best Matches</button>
+  </div>
+  <div id="match-results" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"></div>
+</div>
+
+
+<!-- ──────────────────────────────────────────────────
+     PAGE: CLAIMS
+────────────────────────────────────────────────── -->
+<div id="page-claims" class="page p-6">
+  <h2 class="text-2xl font-bold text-green-900 mb-1">🤝 Claims &amp; Pickup</h2>
+  <p class="text-gray-500 text-sm mb-6">Manage food claims lifecycle: Pending → Confirmed → Completed.</p>
+
+  <!-- Tabs -->
+  <div class="flex gap-2 mb-6 border-b border-gray-200">
+    <button onclick="claimsTab('new')"  id="ctab-new"  class="ctab px-4 py-2 text-sm font-semibold border-b-2 border-green-700 text-green-700">🆕 New Claim</button>
+    <button onclick="claimsTab('all')"  id="ctab-all"  class="ctab px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-green-700">📋 All Claims</button>
+  </div>
+
+  <!-- New Claim -->
+  <div id="cpanel-new">
+    <div class="bg-white rounded-2xl shadow p-6 max-w-lg">
+      <p class="section-title">Claim Food</p>
+      <form id="form-claim" onsubmit="submitClaim(event)" class="space-y-4">
+        <div>
+          <label class="form-label">Claimant (Recipient / Volunteer) *</label>
+          <select id="claim-claimant" name="claimant_id" required class="form-input w-full"></select>
+        </div>
+        <div>
+          <label class="form-label">Food Listing *</label>
+          <select id="claim-listing" name="listing_id" required class="form-input w-full"></select>
+        </div>
+        <div>
+          <label class="form-label">Quantity to Claim *</label>
+          <input name="claimed_quantity" type="number" step="0.1" min="0.1" required class="form-input w-full" placeholder="e.g. 2" />
+        </div>
+        <div>
+          <label class="form-label">Notes (optional)</label>
+          <textarea name="notes" rows="2" class="form-input w-full" placeholder="Any special instructions..."></textarea>
+        </div>
+        <button type="submit" class="btn-primary w-full">✅ Submit Claim</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- All Claims -->
+  <div id="cpanel-all" class="hidden">
+    <div class="flex items-center gap-3 mb-4">
+      <label class="text-sm font-medium text-gray-700">Filter by claimant:</label>
+      <select id="claims-user-filter" onchange="loadClaims()" class="form-input">
+        <option value="">All Users</option>
+      </select>
+      <button onclick="loadClaims()" class="btn-primary text-sm px-3 py-1.5">🔄 Refresh</button>
+    </div>
+    <div id="claims-table" class="overflow-x-auto bg-white rounded-2xl shadow"></div>
+  </div>
+</div>
+
+
+<!-- ──────────────────────────────────────────────────
+     PAGE: ANALYTICS
+────────────────────────────────────────────────── -->
+<div id="page-analytics" class="page p-6">
+  <h2 class="text-2xl font-bold text-green-900 mb-1">📊 Analytics &amp; Reports</h2>
+  <p class="text-gray-500 text-sm mb-6">All metrics from MongoDB aggregation pipelines — nothing hardcoded.</p>
+
+  <!-- Pipeline tabs -->
+  <div class="flex flex-wrap gap-2 mb-6 border-b border-gray-200">
+    <button onclick="analyticsTab('p1')" id="atab-p1" class="atab px-3 py-2 text-xs font-semibold border-b-2 border-green-700 text-green-700">1️⃣ Total Rescued</button>
+    <button onclick="analyticsTab('p2')" id="atab-p2" class="atab px-3 py-2 text-xs font-semibold border-b-2 border-transparent text-gray-500 hover:text-green-700">2️⃣ Categories</button>
+    <button onclick="analyticsTab('p3')" id="atab-p3" class="atab px-3 py-2 text-xs font-semibold border-b-2 border-transparent text-gray-500 hover:text-green-700">3️⃣ Success Rate</button>
+    <button onclick="analyticsTab('p4')" id="atab-p4" class="atab px-3 py-2 text-xs font-semibold border-b-2 border-transparent text-gray-500 hover:text-green-700">4️⃣ Locations</button>
+    <button onclick="analyticsTab('p5')" id="atab-p5" class="atab px-3 py-2 text-xs font-semibold border-b-2 border-transparent text-gray-500 hover:text-green-700">5️⃣ Donors</button>
+    <button onclick="analyticsTab('p6')" id="atab-p6" class="atab px-3 py-2 text-xs font-semibold border-b-2 border-transparent text-gray-500 hover:text-green-700">6️⃣ Trends</button>
+  </div>
+
+  <div id="apanel-p1">
+    <p class="text-sm text-gray-600 mb-4"><b>Pipeline 1 — Total Food Rescued:</b> Groups <code class="bg-gray-100 px-1 rounded">rescue_records</code> by unit using <code class="bg-gray-100 px-1 rounded">$group → $sort → $project</code>.</p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="bg-white rounded-2xl shadow p-4 overflow-x-auto"><div id="table-p1"></div></div>
+      <div class="bg-white rounded-2xl shadow p-4"><canvas id="chart-p1" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <div id="apanel-p2" class="hidden">
+    <p class="text-sm text-gray-600 mb-4"><b>Pipeline 2 — Category Analysis:</b> Groups <code class="bg-gray-100 px-1 rounded">food_listings</code> by category using <code class="bg-gray-100 px-1 rounded">$group → $addFields → $sort → $project</code>.</p>
+    <div class="bg-white rounded-2xl shadow p-4 mb-4"><canvas id="chart-p2" height="180"></canvas></div>
+    <div class="bg-white rounded-2xl shadow p-4 overflow-x-auto"><div id="table-p2"></div></div>
+  </div>
+
+  <div id="apanel-p3" class="hidden">
+    <p class="text-sm text-gray-600 mb-4"><b>Pipeline 3 — Success Rate:</b> Single <code class="bg-gray-100 px-1 rounded">$group</code> with <code class="bg-gray-100 px-1 rounded">$cond</code>, completion % via <code class="bg-gray-100 px-1 rounded">$divide</code>.</p>
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4" id="kpi-p3"></div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="bg-white rounded-2xl shadow p-4"><canvas id="chart-p3-donut" height="220"></canvas></div>
+      <div class="bg-white rounded-2xl shadow p-4 flex items-center justify-center">
+        <div class="text-center">
+          <p class="text-gray-500 text-sm mb-2">Rescue Completion Rate</p>
+          <div id="gauge-p3" class="text-6xl font-bold text-green-700"></div>
+          <div class="text-gray-400 text-sm mt-1">% of closed claims completed</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="apanel-p4" class="hidden">
+    <p class="text-sm text-gray-600 mb-4"><b>Pipeline 4 — Location Analysis:</b> Two sub-pipelines on listings + rescue_records, merged in Python (equivalent to <code class="bg-gray-100 px-1 rounded">$unionWith</code>).</p>
+    <div class="bg-white rounded-2xl shadow p-4 mb-4"><canvas id="chart-p4" height="200"></canvas></div>
+    <div class="bg-white rounded-2xl shadow p-4 overflow-x-auto"><div id="table-p4"></div></div>
+  </div>
+
+  <div id="apanel-p5" class="hidden">
+    <p class="text-sm text-gray-600 mb-4"><b>Pipeline 5 — Donor Performance:</b> <code class="bg-gray-100 px-1 rounded">$group</code> on rescue_records → <code class="bg-gray-100 px-1 rounded">$lookup</code> users → <code class="bg-gray-100 px-1 rounded">$sort</code>.</p>
+    <div class="bg-white rounded-2xl shadow p-4 mb-4"><canvas id="chart-p5" height="200"></canvas></div>
+    <div class="bg-white rounded-2xl shadow p-4 overflow-x-auto"><div id="table-p5"></div></div>
+  </div>
+
+  <div id="apanel-p6" class="hidden">
+    <p class="text-sm text-gray-600 mb-4"><b>Pipeline 6 — Rescue Trends:</b> <code class="bg-gray-100 px-1 rounded">$group</code> by <code class="bg-gray-100 px-1 rounded">$dateToString</code> (day or month).</p>
+    <div class="flex gap-3 mb-4">
+      <button onclick="loadTrends('day')"   id="trend-day"   class="btn-primary text-sm px-3 py-1.5">By Day</button>
+      <button onclick="loadTrends('month')" id="trend-month" class="btn-secondary text-sm px-3 py-1.5">By Month</button>
+    </div>
+    <div class="bg-white rounded-2xl shadow p-4 mb-4"><canvas id="chart-p6-line" height="180"></canvas></div>
+    <div class="bg-white rounded-2xl shadow p-4 mb-4"><canvas id="chart-p6-bar"  height="180"></canvas></div>
+    <div class="bg-white rounded-2xl shadow p-4 overflow-x-auto"><div id="table-p6"></div></div>
+  </div>
+</div>
+
+
+<!-- ──────────────────────────────────────────────────
+     PAGE: USERS
+────────────────────────────────────────────────── -->
+<div id="page-users" class="page p-6">
+  <h2 class="text-2xl font-bold text-green-900 mb-1">👥 User Management</h2>
+  <p class="text-gray-500 text-sm mb-6">Register and manage donors, recipients and volunteers.</p>
+
+  <div class="flex gap-2 mb-6 border-b border-gray-200">
+    <button onclick="usersTab('list')"     id="utab-list"     class="utab px-4 py-2 text-sm font-semibold border-b-2 border-green-700 text-green-700">📋 All Users</button>
+    <button onclick="usersTab('register')" id="utab-register" class="utab px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-green-700">➕ Register</button>
+    <button onclick="usersTab('edit')"     id="utab-edit"     class="utab px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-green-700">✏️ Edit / Deactivate</button>
+  </div>
+
+  <!-- List -->
+  <div id="upanel-list">
+    <div class="flex items-center gap-3 mb-4">
+      <select id="users-role-filter" onchange="loadUsers()" class="form-input">
+        <option value="">All Roles</option>
+        <option value="donor">Donors</option>
+        <option value="recipient">Recipients</option>
+        <option value="volunteer">Volunteers</option>
+      </select>
+      <button onclick="loadUsers()" class="btn-primary text-sm px-3 py-1.5">🔄 Refresh</button>
+    </div>
+    <div id="users-table" class="overflow-x-auto bg-white rounded-2xl shadow"></div>
+  </div>
+
+  <!-- Register -->
+  <div id="upanel-register" class="hidden">
+    <div class="bg-white rounded-2xl shadow p-6 max-w-lg">
+      <p class="section-title">Register New User</p>
+      <form id="form-register" onsubmit="submitRegister(event)" class="space-y-4">
+        <div>
+          <label class="form-label">Full Name *</label>
+          <input name="name" required class="form-input w-full" placeholder="e.g. Priya Sharma" />
+        </div>
+        <div>
+          <label class="form-label">Email *</label>
+          <input name="email" type="email" required class="form-input w-full" placeholder="user@example.com" />
+        </div>
+        <div>
+          <label class="form-label">Password *</label>
+          <input name="password" type="password" required class="form-input w-full" placeholder="Min 6 characters" />
+        </div>
+        <div>
+          <label class="form-label">Role *</label>
+          <select name="role" required class="form-input w-full" id="select-role-register">
+            <option value="donor">Donor</option>
+            <option value="recipient">Recipient</option>
+            <option value="volunteer">Volunteer</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Phone</label>
+          <input name="phone" class="form-input w-full" placeholder="+91 99999 00000" />
+        </div>
+        <div>
+          <label class="form-label">Location</label>
+          <input name="location" class="form-input w-full" placeholder="City / Area" />
+        </div>
+        <div>
+          <label class="form-label">Organization</label>
+          <input name="organization" class="form-input w-full" placeholder="NGO / Company name" />
+        </div>
+        <button type="submit" class="btn-primary w-full">✅ Register User</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit -->
+  <div id="upanel-edit" class="hidden">
+    <div class="bg-white rounded-2xl shadow p-6 max-w-lg">
+      <p class="section-title">Edit / Deactivate User</p>
+      <div class="mb-4">
+        <label class="form-label">Select User</label>
+        <select id="edit-user-select" onchange="loadEditUser()" class="form-input w-full">
+          <option value="">— choose —</option>
+        </select>
+      </div>
+      <form id="form-edit-user" onsubmit="submitEditUser(event)" class="space-y-4 hidden">
+        <div>
+          <label class="form-label">Name</label>
+          <input id="eu-name" name="name" class="form-input w-full" />
+        </div>
+        <div>
+          <label class="form-label">Phone</label>
+          <input id="eu-phone" name="phone" class="form-input w-full" />
+        </div>
+        <div>
+          <label class="form-label">Location</label>
+          <input id="eu-location" name="location" class="form-input w-full" />
+        </div>
+        <div>
+          <label class="form-label">Organization</label>
+          <input id="eu-org" name="organization" class="form-input w-full" />
+        </div>
+        <div class="flex gap-3">
+          <button type="submit" class="btn-primary">💾 Save Changes</button>
+          <button type="button" onclick="deactivateUser()" class="btn-danger">🚫 Deactivate</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+</main><!-- end main -->
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     STYLES (shared form/button classes via JS injection)
+═══════════════════════════════════════════════════════ -->
+<style>
+.form-label { display:block; font-size:.8rem; font-weight:600; color:#374151; margin-bottom:4px; }
+.form-input { border:1px solid #d1d5db; border-radius:8px; padding:8px 12px; font-size:.88rem; color:#1f2937; background:#fff; }
+.form-input:focus { border-color:#2e7d52; box-shadow:0 0 0 2px rgba(46,125,82,.2); }
+.btn-primary { background:linear-gradient(135deg,#2e7d52,#1a3c2e); color:#fff; border:none; border-radius:8px; font-weight:600; font-size:.85rem; padding:8px 18px; cursor:pointer; transition:all .2s; }
+.btn-primary:hover { background:linear-gradient(135deg,#3d9966,#2e7d52); }
+.btn-secondary { background:#f3f4f6; color:#374151; border:1px solid #d1d5db; border-radius:8px; font-weight:600; font-size:.85rem; padding:8px 18px; cursor:pointer; }
+.btn-secondary:hover { background:#e5e7eb; }
+.btn-danger { background:#dc2626; color:#fff; border:none; border-radius:8px; font-weight:600; font-size:.85rem; padding:8px 18px; cursor:pointer; }
+.btn-danger:hover { background:#b91c1c; }
+.btn-sm { font-size:.75rem; padding:4px 10px; border-radius:6px; font-weight:600; cursor:pointer; }
+.badge { display:inline-block; border-radius:9999px; padding:2px 10px; font-size:.72rem; font-weight:600; }
+</style>
+
+<!-- ═══════════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════════ -->
+<script>
+// ── Config & State ──────────────────────────────────────────────────────────
+const API = '/api';
+let CONFIG = {};
+let _charts = {};
+
+// ── Utilities ───────────────────────────────────────────────────────────────
+async function api(path, opts = {}) {
+  const res = await fetch(API + path, {
+    headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+    ...opts,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+  return data;
+}
+
+function toast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function spin(id) {
+  document.getElementById(id).innerHTML = '<div class="flex justify-center py-8"><div class="spinner"></div></div>';
+}
+
+function badge(status) {
+  return `<span class="badge badge-${status}">${status}</span>`;
+}
+
+function fmtDt(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function makeTable(cols, rows, emptyMsg = 'No data.') {
+  if (!rows.length) return `<p class="text-gray-400 text-sm p-4">${emptyMsg}</p>`;
+  return `<table><thead><tr>${cols.map(c=>`<th class="px-4 py-2.5 text-left">${c}</th>`).join('')}</tr></thead>
+  <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td class="px-4 py-2.5 text-sm text-gray-700 border-t border-gray-100">${c??'—'}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+}
+
+function destroyChart(id) {
+  if (_charts[id]) { _charts[id].destroy(); delete _charts[id]; }
+}
+
+function mkChart(id, cfg) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  _charts[id] = new Chart(ctx, cfg);
+}
+
+const COLORS = ['#2e7d52','#1565c0','#6a1b9a','#e65100','#00695c','#c62828','#37474f','#f9a825','#00838f','#558b2f'];
+
+// ── Navigation ───────────────────────────────────────────────────────────────
+const PAGE_LOADERS = {
+  dashboard: loadDashboard,
+  listings:  loadListingsPage,
+  browse:    loadBrowse,
+  match:     loadMatchPage,
+  claims:    loadClaimsPage,
+  analytics: loadAnalyticsPage,
+  users:     loadUsersPage,
+};
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelector(`[data-page="${name}"]`).classList.add('active');
+  if (PAGE_LOADERS[name]) PAGE_LOADERS[name]();
+}
+
+// ── Bootstrap ────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    CONFIG = await api('/config');
+    loadDashboard();
+  } catch(e) {
+    toast('⚠️ Cannot connect to API: ' + e.message, 'error');
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  DASHBOARD
+// ════════════════════════════════════════════════════
+async function loadDashboard() {
+  try {
+    spin('kpi-row1');
+    const [summary, trends, cats, alerts, recent] = await Promise.all([
+      api('/analytics/dashboard'),
+      api('/analytics/trends?group_by=day'),
+      api('/analytics/categories'),
+      api('/alerts?hours=3'),
+      api('/rescues/recent?limit=8'),
+    ]);
+
+    // KPI Row 1
+    document.getElementById('kpi-row1').innerHTML = [
+      kpiCard(summary.active_listings,   'Active Listings',       'status: available',   '#2e7d52'),
+      kpiCard(summary.completed_rescues, 'Rescues Completed',     'all time',            '#1565c0'),
+      kpiCard((summary.total_rescued_kg||0).toFixed(1)+' kg', 'Food Rescued', 'from records', '#6a1b9a'),
+      kpiCard(summary.pending_claims,    'Pending Claims',        'awaiting action',     '#e65100'),
+      kpiCard((summary.completion_pct||0)+'%', 'Success Rate',    'completed / closed',  '#2e7d52'),
+    ].join('');
+
+    // KPI Row 2
+    document.getElementById('kpi-row2').innerHTML = [
+      kpiCard(summary.total_listings,   'Total Listings',        'ever created',          '#37474f'),
+      kpiCard(summary.expired_listings, 'Expired Listings',      'missed deadline',       '#c62828'),
+      kpiCard(summary.cancelled_claims, 'Cancelled Claims',      'not rescued',           '#c62828'),
+      kpiCard(summary.total_users,      'Registered Users',      'donors + recipients',   '#00695c'),
+      kpiCard('~'+(summary.estimated_meals||0).toLocaleString(), 'Est. Meals Rescued', '2.5 meals/kg · estimate', '#6a1b9a'),
+    ].join('');
+
+    document.getElementById('estimate-note').classList.remove('hidden');
+    document.getElementById('hero-subtitle').innerHTML =
+      `Smart Food Waste Rescue &amp; Analytics &nbsp;·&nbsp; <b style="color:#7dffb0">${summary.active_listings} active listings</b> &nbsp;·&nbsp; <b style="color:#7dffb0">${summary.completed_rescues} rescues completed</b>`;
+
+    // Trend chart
+    mkChart('chart-trend', {
+      type: 'line',
+      data: {
+        labels: trends.map(r=>r.period),
+        datasets: [{ label:'Rescues', data: trends.map(r=>r.rescue_count),
+          borderColor:'#2e7d52', backgroundColor:'rgba(46,125,82,.15)',
+          fill:true, tension:.4, pointRadius:4, pointBackgroundColor:'#2e7d52' }]
+      },
+      options: { plugins:{ legend:{labels:{color:'#aaa'}} }, scales:{
+        x:{ticks:{color:'#aaa'},grid:{color:'#222'}},
+        y:{ticks:{color:'#aaa'},grid:{color:'#222'}} } }
+    });
+
+    // Category donut
+    mkChart('chart-category', {
+      type: 'doughnut',
+      data: {
+        labels: cats.map(c=>c.category),
+        datasets: [{ data: cats.map(c=>c.listing_count), backgroundColor: COLORS,
+          borderColor:'#000', borderWidth:1 }]
+      },
+      options: { cutout:'52%', plugins:{ legend:{labels:{color:'#ccc',font:{size:10}}} } }
+    });
+
+    // Claim status bars
+    const total = (summary.completed_rescues||0) + (summary.pending_claims||0) + (summary.cancelled_claims||0) || 1;
+    document.getElementById('claim-bars').innerHTML = [
+      ['Completed', summary.completed_rescues, '#2e7d52'],
+      ['Pending',   summary.pending_claims,    '#f59e0b'],
+      ['Cancelled', summary.cancelled_claims,  '#ef4444'],
+    ].map(([lbl,val,col]) => `
+      <div class="mb-3">
+        <div class="flex justify-between text-xs font-semibold mb-1">
+          <span class="text-gray-700">${lbl}</span><span style="color:${col}">${val}</span>
+        </div>
+        <div class="bg-gray-100 rounded-full h-2">
+          <div style="background:${col};width:${(val/total*100).toFixed(1)}%;height:8px;border-radius:9999px;transition:width .4s"></div>
+        </div>
+      </div>`).join('');
+
+    // Unit bar chart
+    const units = summary.rescued_totals || [];
+    mkChart('chart-unit', {
+      type: 'bar',
+      data: {
+        labels: units.map(u=>u.unit),
+        datasets: [{ data: units.map(u=>u.total_rescued), backgroundColor: COLORS,
+          borderRadius:6 }]
+      },
+      options: { indexAxis:'y', plugins:{ legend:{display:false} },
+        scales:{
+          x:{ticks:{color:'#aaa'},grid:{color:'#222'}},
+          y:{ticks:{color:'#aaa'},grid:{color:'#333'}} } }
+    });
+
+    // Urgency alerts
+    const alertsEl = document.getElementById('urgency-alerts');
+    if (alerts.length) {
+      alertsEl.innerHTML = alerts.map(a => {
+        const hrs = a.hours_left || 0;
+        const col = hrs < 1 ? '#ef4444' : '#f59e0b';
+        const avail = Math.max(0, (a.quantity||0) - (a.claimed_quantity||0));
+        return `<div class="rounded-r-xl border-l-4 bg-red-50 px-4 py-3 mb-2 text-sm"
+          style="border-left-color:${col};">
+          <b style="color:${col};">⏱ ${hrs}h left</b> &nbsp;|&nbsp;
+          <b>${a.title||''}</b> &nbsp;|&nbsp;
+          ${avail.toFixed(1)} ${a.unit||''} available &nbsp;|&nbsp;
+          📍 ${a.pickup_location||'—'}
+        </div>`;
+      }).join('');
+    } else {
+      alertsEl.innerHTML = `<div class="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-green-800 text-sm font-medium">✅ No urgent listings right now.</div>`;
+    }
+
+    // Recent rescues
+    document.getElementById('recent-rescues').innerHTML = makeTable(
+      ['🍱 Food','Category','Qty','Donor','Recipient','📍 Location','🕐 When'],
+      recent.map(r=>[r.food_title,r.category,`${r.rescued_quantity} ${r.unit}`,
+        r.donor_name,r.recipient_name,r.pickup_location,fmtDt(r.rescued_at)])
+    );
+
+  } catch(e) {
+    document.getElementById('kpi-row1').innerHTML = `<div class="col-span-5 text-red-500 text-sm">${e.message}</div>`;
+  }
+}
+
+function kpiCard(val, label, sub, color) {
+  return `<div class="kpi-card bg-white rounded-2xl p-5 shadow text-center" style="border-top:4px solid ${color};">
+    <div class="text-3xl font-bold" style="color:#1a3c2e;">${val}</div>
+    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-1">${label}</div>
+    <div class="text-xs text-gray-400 mt-1">${sub}</div>
+  </div>`;
+}
+
+// ════════════════════════════════════════════════════
+//  LISTINGS PAGE
+// ════════════════════════════════════════════════════
+function loadListingsPage() {
+  populateSelect('select-category-add', CONFIG.categories||[], '');
+  populateSelect('select-unit-add', CONFIG.units||[], '');
+  populateSelect('edit-category', CONFIG.categories||[], '');
+  populateSelect('edit-unit', CONFIG.units||[], '');
+  loadDonorsSelect('select-donor-add');
+  loadListings();
+  loadListingsForEditSelect();
+}
+
+async function loadListings() {
+  spin('listings-table');
+  try {
+    const status = document.getElementById('ls-status-filter').value;
+    const listings = await api('/listings' + (status ? `?status=${status}` : ''));
+    document.getElementById('listings-table').innerHTML = makeTable(
+      ['Title','Category','Qty','Status','Donor','Pickup Location','Deadline'],
+      listings.map(l=>[l.title, l.category,
+        `${l.quantity} ${l.unit}`, badge(l.status),
+        l.donor_name||'—', l.pickup_location, fmtDt(l.pickup_deadline)])
+    );
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function loadListingsForEditSelect() {
+  try {
+    const listings = await api('/listings?status=available');
+    const sel = document.getElementById('edit-listing-select');
+    sel.innerHTML = '<option value="">— choose —</option>' +
+      listings.map(l=>`<option value="${l._id}">${l.title} (${l.category})</option>`).join('');
+  } catch(e) {}
+}
+
+function loadEditListing() {
+  const id = document.getElementById('edit-listing-select').value;
+  if (!id) { document.getElementById('form-edit-listing').classList.add('hidden'); return; }
+  api('/listings/' + id).then(l => {
+    document.getElementById('edit-title').value    = l.title||'';
+    document.getElementById('edit-category').value = l.category||'';
+    document.getElementById('edit-unit').value     = l.unit||'';
+    document.getElementById('edit-location').value = l.pickup_location||'';
+    document.getElementById('edit-desc').value     = l.description||'';
+    if (l.pickup_deadline)
+      document.getElementById('edit-deadline').value = l.pickup_deadline.slice(0,16);
+    document.getElementById('form-edit-listing').classList.remove('hidden');
+  }).catch(e=>toast(e.message,'error'));
+}
+
+async function submitAddListing(e) {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const body = Object.fromEntries(fd.entries());
+  body.quantity = parseFloat(body.quantity);
+  if (body.allergens) body.allergens = body.allergens.split(',').map(s=>s.trim()).filter(Boolean);
+  else delete body.allergens;
+  try {
+    await api('/listings', { method:'POST', body: JSON.stringify(body) });
+    toast('✅ Listing created!');
+    e.target.reset();
+    loadListings();
+  } catch(e2) { toast(e2.message,'error'); }
+}
+
+async function submitEditListing(e) {
+  e.preventDefault();
+  const id = document.getElementById('edit-listing-select').value;
+  const fd = new FormData(e.target);
+  const body = Object.fromEntries(fd.entries());
+  try {
+    await api('/listings/' + id, { method:'PUT', body: JSON.stringify(body) });
+    toast('✅ Listing updated!');
+    loadListings();
+  } catch(e2) { toast(e2.message,'error'); }
+}
+
+async function deleteListing() {
+  const id = document.getElementById('edit-listing-select').value;
+  if (!id || !confirm('Delete this listing?')) return;
+  try {
+    await api('/listings/' + id, { method:'DELETE' });
+    toast('🗑 Listing deleted.');
+    loadListings(); loadListingsForEditSelect();
+    document.getElementById('form-edit-listing').classList.add('hidden');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function listingsTab(tab) {
+  ['view','add','edit'].forEach(t => {
+    document.getElementById('lpanel-'+t).classList.toggle('hidden', t!==tab);
+    const btn = document.getElementById('ltab-'+t);
+    btn.classList.toggle('border-green-700', t===tab);
+    btn.classList.toggle('text-green-700', t===tab);
+    btn.classList.toggle('border-transparent', t!==tab);
+    btn.classList.toggle('text-gray-500', t!==tab);
+  });
+}
+
+// ════════════════════════════════════════════════════
+//  BROWSE PAGE
+// ════════════════════════════════════════════════════
+function loadBrowse() {
+  populateSelect('browse-category', CONFIG.categories||[], '');
+  _loadBrowse();
+}
+async function _loadBrowse() {
+  const status   = document.getElementById('browse-status')?.value || 'available';
+  const category = document.getElementById('browse-category')?.value || '';
+  const location = document.getElementById('browse-location')?.value || '';
+  let q = `/listings?limit=100`;
+  if (status) q += `&status=${status}`;
+  if (category) q += `&category=${encodeURIComponent(category)}`;
+  if (location) q += `&location=${encodeURIComponent(location)}`;
+  const el = document.getElementById('browse-cards');
+  el.innerHTML = '<div class="col-span-3 flex justify-center py-8"><div class="spinner"></div></div>';
+  try {
+    const listings = await api(q);
+    if (!listings.length) { el.innerHTML='<p class="text-gray-400 col-span-3">No listings found.</p>'; return; }
+    el.innerHTML = listings.map(l => {
+      const avail = Math.max(0, (l.quantity||0)-(l.claimed_quantity||0));
+      const urgency = isUrgent(l.pickup_deadline);
+      return `<div class="bg-white rounded-2xl shadow p-5 border-t-4" style="border-color:${urgency?'#ef4444':'#2e7d52'}">
+        <div class="flex items-start justify-between mb-2">
+          <h3 class="font-bold text-gray-900">${l.title}</h3>
+          ${badge(l.status)}
+        </div>
+        <div class="text-xs text-gray-500 mb-3 space-y-1">
+          <div>🏷 <b>${l.category}</b></div>
+          <div>📦 ${avail.toFixed(1)} / ${l.quantity} ${l.unit} available</div>
+          <div>📍 ${l.pickup_location}</div>
+          <div>⏰ ${fmtDt(l.pickup_deadline)}</div>
+          <div>👤 ${l.donor_name||'—'}</div>
+        </div>
+        ${urgency?'<div class="text-xs font-bold text-red-600 mb-2">🚨 Urgent – expiring soon!</div>':''}
+        ${l.description?`<p class="text-xs text-gray-600 mb-3">${l.description}</p>`:''}
+      </div>`;
+    }).join('');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function isUrgent(deadline) {
+  if (!deadline) return false;
+  return (new Date(deadline) - new Date()) < 3*3600*1000;
+}
+
+// ════════════════════════════════════════════════════
+//  SMART MATCHING PAGE
+// ════════════════════════════════════════════════════
+function loadMatchPage() {
+  populateSelect('match-category', CONFIG.categories||[], '');
+}
+
+async function runMatch() {
+  const cat  = document.getElementById('match-category').value;
+  const loc  = document.getElementById('match-location').value;
+  const topn = document.getElementById('match-topn').value;
+  let q = `/match?top_n=${topn}`;
+  if (cat) q += `&category=${encodeURIComponent(cat)}`;
+  if (loc) q += `&location=${encodeURIComponent(loc)}`;
+  const el = document.getElementById('match-results');
+  el.innerHTML = '<div class="col-span-3 flex justify-center py-8"><div class="spinner"></div></div>';
+  try {
+    const results = await api(q);
+    if (!results.length) { el.innerHTML='<p class="text-gray-400 col-span-3">No matches found.</p>'; return; }
+    el.innerHTML = results.map((l,i) => `
+      <div class="bg-white rounded-2xl shadow p-5 border-t-4 border-green-600">
+        <div class="flex items-start justify-between mb-2">
+          <h3 class="font-bold text-gray-900">#${i+1} ${l.title}</h3>
+          <span class="badge bg-green-100 text-green-800">Score: ${l.score||0}</span>
+        </div>
+        <div class="text-xs text-gray-500 space-y-1 mb-3">
+          <div>🏷 ${l.category}</div>
+          <div>📦 ${l.quantity} ${l.unit}</div>
+          <div>📍 ${l.pickup_location}</div>
+          <div>⏰ ${fmtDt(l.pickup_deadline)}</div>
+        </div>
+        ${l.match_reasons?.length ? `<div class="text-xs text-green-700 font-medium">✔ ${l.match_reasons.join(' · ')}</div>` : ''}
+      </div>`).join('');
+  } catch(e) { toast(e.message,'error'); el.innerHTML=''; }
+}
+
+// ════════════════════════════════════════════════════
+//  CLAIMS PAGE
+// ════════════════════════════════════════════════════
+async function loadClaimsPage() {
+  // Populate claimant select
+  const users = await api('/users?role=recipient').catch(()=>[]);
+  const vols  = await api('/users?role=volunteer').catch(()=>[]);
+  const all   = [...users, ...vols];
+  const sel = document.getElementById('claim-claimant');
+  sel.innerHTML = '<option value="">— select claimant —</option>' +
+    all.map(u=>`<option value="${u._id}">${u.name} (${u.role})</option>`).join('');
+
+  // Populate listing select (available only)
+  const listings = await api('/listings?status=available').catch(()=>[]);
+  const lsel = document.getElementById('claim-listing');
+  lsel.innerHTML = '<option value="">— select listing —</option>' +
+    listings.map(l=>`<option value="${l._id}">${l.title} — ${l.pickup_location} (${l.quantity} ${l.unit})</option>`).join('');
+
+  // User filter in All Claims
+  const usel = document.getElementById('claims-user-filter');
+  usel.innerHTML = '<option value="">All Users</option>' +
+    all.map(u=>`<option value="${u._id}">${u.name}</option>`).join('');
+  loadClaims();
+}
+
+async function submitClaim(e) {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const body = Object.fromEntries(fd.entries());
+  body.claimed_quantity = parseFloat(body.claimed_quantity);
+  try {
+    await api('/claims', { method:'POST', body: JSON.stringify(body) });
+    toast('✅ Claim submitted!');
+    e.target.reset();
+    loadClaimsPage();
+  } catch(err) { toast(err.message,'error'); }
+}
+
+async function loadClaims() {
+  spin('claims-table');
+  try {
+    const uid = document.getElementById('claims-user-filter').value;
+    const claims = await api('/claims' + (uid ? `?claimant_id=${uid}` : ''));
+    document.getElementById('claims-table').innerHTML = makeTable(
+      ['Food','Category','Qty','Status','Claimant','Role','Location','Deadline','Actions'],
+      claims.map(c=>[
+        c.listing_title, c.listing_category,
+        `${c.claimed_quantity} ${c.unit||''}`,
+        badge(c.status), c.claimant_name, c.claimant_role,
+        c.pickup_location, fmtDt(c.pickup_deadline),
+        claimActions(c)
+      ])
+    );
+    // Rebind action buttons
+    document.querySelectorAll('[data-claim-action]').forEach(btn => {
+      btn.onclick = () => doClaimAction(btn.dataset.claimId, btn.dataset.claimAction);
+    });
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function claimActions(c) {
+  const id = c._id;
+  if (c.status === 'pending')   return `
+    <button class="btn-sm bg-blue-600 text-white mr-1" data-claim-id="${id}" data-claim-action="confirm">Confirm</button>
+    <button class="btn-sm bg-red-500 text-white" data-claim-id="${id}" data-claim-action="cancel">Cancel</button>`;
+  if (c.status === 'confirmed') return `
+    <button class="btn-sm bg-green-600 text-white mr-1" data-claim-id="${id}" data-claim-action="complete">Complete</button>
+    <button class="btn-sm bg-red-500 text-white" data-claim-id="${id}" data-claim-action="cancel">Cancel</button>`;
+  return `<span class="text-xs text-gray-400">${c.status}</span>`;
+}
+
+async function doClaimAction(id, action) {
+  try {
+    await api(`/claims/${id}/${action}`, { method:'PATCH' });
+    toast(`✅ Claim ${action}d.`);
+    loadClaims();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function claimsTab(tab) {
+  ['new','all'].forEach(t => {
+    document.getElementById('cpanel-'+t).classList.toggle('hidden', t!==tab);
+    const btn = document.getElementById('ctab-'+t);
+    btn.classList.toggle('border-green-700', t===tab);
+    btn.classList.toggle('text-green-700', t===tab);
+    btn.classList.toggle('border-transparent', t!==tab);
+    btn.classList.toggle('text-gray-500', t!==tab);
+  });
+  if (tab === 'all') loadClaims();
+}
+
+// ════════════════════════════════════════════════════
+//  ANALYTICS PAGE
+// ════════════════════════════════════════════════════
+const ANALYTICS_LOADED = {};
+
+function analyticsTab(tab) {
+  ['p1','p2','p3','p4','p5','p6'].forEach(t => {
+    document.getElementById('apanel-'+t).classList.toggle('hidden', t!==tab);
+    const btn = document.getElementById('atab-'+t);
+    btn.classList.toggle('border-green-700', t===tab);
+    btn.classList.toggle('text-green-700', t===tab);
+    btn.classList.toggle('border-transparent', t!==tab);
+    btn.classList.toggle('text-gray-500', t!==tab);
+  });
+  if (!ANALYTICS_LOADED[tab]) { ANALYTICS_LOADERS[tab](); ANALYTICS_LOADED[tab]=true; }
+}
+
+function loadAnalyticsPage() { if (!ANALYTICS_LOADED['p1']) { ANALYTICS_LOADERS['p1'](); ANALYTICS_LOADED['p1']=true; } }
+
+const ANALYTICS_LOADERS = {
+  p1: loadP1, p2: loadP2, p3: loadP3, p4: loadP4, p5: loadP5, p6: () => loadTrends('day'),
+};
+
+async function loadP1() {
+  try {
+    const data = await api('/analytics/total-rescued');
+    document.getElementById('table-p1').innerHTML = makeTable(
+      ['Unit','Total Rescued','# Rescues'],
+      data.map(r=>[r.unit, r.total_rescued, r.rescue_count])
+    );
+    mkChart('chart-p1', {
+      type:'bar',
+      data:{ labels:data.map(d=>d.unit),
+        datasets:[{label:'Qty Rescued', data:data.map(d=>d.total_rescued),
+          backgroundColor:COLORS, borderRadius:6}]},
+      options:{ plugins:{legend:{display:false}},
+        scales:{x:{ticks:{color:'#374151'}},y:{ticks:{color:'#374151'}}} }
+    });
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function loadP2() {
+  try {
+    const data = await api('/analytics/categories');
+    document.getElementById('table-p2').innerHTML = makeTable(
+      ['Category','# Listings','Total Qty','Claimed','Remaining','Avg Qty'],
+      data.map(r=>[r.category,r.listing_count,r.total_quantity,r.total_claimed,r.remaining_quantity,r.avg_quantity?.toFixed(1)])
+    );
+    mkChart('chart-p2', {
+      type:'bar',
+      data:{ labels:data.map(d=>d.category),
+        datasets:[
+          {label:'Total',     data:data.map(d=>d.total_quantity),     backgroundColor:'#2196F3', borderRadius:4},
+          {label:'Claimed',   data:data.map(d=>d.total_claimed),      backgroundColor:'#FF9800', borderRadius:4},
+          {label:'Remaining', data:data.map(d=>d.remaining_quantity), backgroundColor:'#4CAF50', borderRadius:4},
+        ]},
+      options:{ scales:{x:{ticks:{color:'#374151'}},y:{ticks:{color:'#374151'}}} }
+    });
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function loadP3() {
+  try {
+    const s = await api('/analytics/success-rate');
+    document.getElementById('kpi-p3').innerHTML = [
+      kpiCard(s.completed,'Completed','',  '#4CAF50'),
+      kpiCard(s.cancelled,'Cancelled','',  '#F44336'),
+      kpiCard(s.pending,  'Pending','',    '#FF9800'),
+      kpiCard(s.confirmed,'Confirmed','',  '#2196F3'),
+      kpiCard(s.completion_pct+'%','Success Rate','',  '#4CAF50'),
+    ].join('');
+    mkChart('chart-p3-donut', {
+      type:'doughnut',
+      data:{ labels:['Completed','Cancelled','Pending','Confirmed'],
+        datasets:[{data:[s.completed,s.cancelled,s.pending,s.confirmed],
+          backgroundColor:['#4CAF50','#F44336','#FF9800','#2196F3']}]},
+      options:{ cutout:'45%', plugins:{legend:{labels:{color:'#374151'}}} }
+    });
+    document.getElementById('gauge-p3').textContent = s.completion_pct + '%';
+    document.getElementById('gauge-p3').style.color = s.completion_pct>=75?'#16a34a':s.completion_pct>=50?'#d97706':'#dc2626';
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function loadP4() {
+  try {
+    const data = await api('/analytics/locations');
+    document.getElementById('table-p4').innerHTML = makeTable(
+      ['Location','# Listings','Total Qty','# Rescues','Total Rescued'],
+      data.map(r=>[r.location,r.listing_count,r.total_quantity,r.rescue_count,r.rescued_total])
+    );
+    mkChart('chart-p4', {
+      type:'bar',
+      data:{ labels:data.slice(0,10).map(d=>d.location),
+        datasets:[
+          {label:'Listings', data:data.slice(0,10).map(d=>d.listing_count), backgroundColor:'#2196F3', borderRadius:4},
+          {label:'Rescues',  data:data.slice(0,10).map(d=>d.rescue_count),  backgroundColor:'#4CAF50', borderRadius:4},
+        ]},
+      options:{ scales:{x:{ticks:{color:'#374151',maxRotation:30}},y:{ticks:{color:'#374151'}}} }
+    });
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function loadP5() {
+  try {
+    const data = await api('/analytics/donors');
+    document.getElementById('table-p5').innerHTML = makeTable(
+      ['Donor','Location','Total Rescued','# Rescues','Categories'],
+      data.map(r=>[r.donor_name,r.donor_location,r.total_rescued,r.rescue_events,(r.categories||[]).join(', ')])
+    );
+    mkChart('chart-p5', {
+      type:'bar',
+      data:{ labels:data.map(d=>d.donor_name),
+        datasets:[{label:'Total Rescued', data:data.map(d=>d.total_rescued),
+          backgroundColor:COLORS, borderRadius:6}]},
+      options:{ plugins:{legend:{display:false}},
+        scales:{x:{ticks:{color:'#374151',maxRotation:20}},y:{ticks:{color:'#374151'}}} }
+    });
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function loadTrends(granularity) {
+  ANALYTICS_LOADED['p6'] = true;
+  ['day','month'].forEach(g => {
+    document.getElementById('trend-'+g).className = g===granularity?'btn-primary text-sm px-3 py-1.5':'btn-secondary text-sm px-3 py-1.5';
+  });
+  try {
+    const data = await api(`/analytics/trends?group_by=${granularity}`);
+    document.getElementById('table-p6').innerHTML = makeTable(
+      ['Period','# Rescues','Total Rescued'],
+      data.map(r=>[r.period,r.rescue_count,r.total_rescued])
+    );
+    mkChart('chart-p6-line', {
+      type:'line',
+      data:{ labels:data.map(d=>d.period),
+        datasets:[{label:'Rescue Events', data:data.map(d=>d.rescue_count),
+          borderColor:'#4CAF50', backgroundColor:'rgba(76,175,80,.1)', fill:true, tension:.4, pointRadius:5}]},
+      options:{ scales:{x:{ticks:{color:'#374151'}},y:{ticks:{color:'#374151'}}} }
+    });
+    mkChart('chart-p6-bar', {
+      type:'bar',
+      data:{ labels:data.map(d=>d.period),
+        datasets:[{label:'Qty Rescued', data:data.map(d=>d.total_rescued),
+          backgroundColor:COLORS[0], borderRadius:5}]},
+      options:{ plugins:{legend:{display:false}},
+        scales:{x:{ticks:{color:'#374151'}},y:{ticks:{color:'#374151'}}} }
+    });
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// ════════════════════════════════════════════════════
+//  USERS PAGE
+// ════════════════════════════════════════════════════
+async function loadUsersPage() { loadUsers(); }
+
+async function loadUsers() {
+  spin('users-table');
+  try {
+    const role = document.getElementById('users-role-filter').value;
+    const users = await api('/users' + (role ? `?role=${role}` : ''));
+    document.getElementById('users-table').innerHTML = makeTable(
+      ['Name','Email','Role','Phone','Location','Organization','Joined'],
+      users.map(u=>[u.name, u.email, badge(u.role)||u.role,
+        u.phone||'—', u.location||'—', u.organization||'—', fmtDt(u.created_at)])
+    );
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function submitRegister(e) {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const body = Object.fromEntries(fd.entries());
+  try {
+    await api('/users', { method:'POST', body: JSON.stringify(body) });
+    toast('✅ User registered!');
+    e.target.reset();
+    loadUsers();
+  } catch(err) { toast(err.message,'error'); }
+}
+
+async function loadEditUser() {
+  const id = document.getElementById('edit-user-select').value;
+  if (!id) { document.getElementById('form-edit-user').classList.add('hidden'); return; }
+  const u = await api('/users/' + id).catch(e=>{toast(e.message,'error');return null;});
+  if (!u) return;
+  document.getElementById('eu-name').value     = u.name||'';
+  document.getElementById('eu-phone').value    = u.phone||'';
+  document.getElementById('eu-location').value = u.location||'';
+  document.getElementById('eu-org').value      = u.organization||'';
+  document.getElementById('form-edit-user').classList.remove('hidden');
+}
+
+async function submitEditUser(e) {
+  e.preventDefault();
+  const id = document.getElementById('edit-user-select').value;
+  const fd = new FormData(e.target);
+  const body = Object.fromEntries(fd.entries());
+  try {
+    await api('/users/' + id, { method:'PUT', body: JSON.stringify(body) });
+    toast('✅ User updated!');
+    loadUsers();
+  } catch(err) { toast(err.message,'error'); }
+}
+
+async function deactivateUser() {
+  const id = document.getElementById('edit-user-select').value;
+  if (!id || !confirm('Deactivate this user?')) return;
+  try {
+    await api('/users/' + id, { method:'DELETE' });
+    toast('User deactivated.');
+    loadUsers();
+    document.getElementById('form-edit-user').classList.add('hidden');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function usersTab(tab) {
+  ['list','register','edit'].forEach(t => {
+    document.getElementById('upanel-'+t).classList.toggle('hidden', t!==tab);
+    const btn = document.getElementById('utab-'+t);
+    btn.classList.toggle('border-green-700', t===tab);
+    btn.classList.toggle('text-green-700', t===tab);
+    btn.classList.toggle('border-transparent', t!==tab);
+    btn.classList.toggle('text-gray-500', t!==tab);
+  });
+  if (tab==='edit') populateUserEditSelect();
+}
+
+async function populateUserEditSelect() {
+  const users = await api('/users').catch(()=>[]);
+  const sel = document.getElementById('edit-user-select');
+  sel.innerHTML = '<option value="">— choose —</option>' +
+    users.map(u=>`<option value="${u._id}">${u.name} (${u.role})</option>`).join('');
+}
+
+// ════════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════════
+function populateSelect(id, options, emptyLabel) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = (emptyLabel !== undefined ? `<option value="">${emptyLabel||'— select —'}</option>` : '') +
+    options.map(o=>`<option value="${o}">${o}</option>`).join('');
+}
+
+async function loadDonorsSelect(id) {
+  const donors = await api('/users?role=donor').catch(()=>[]);
+  populateSelect(id, [], undefined);
+  document.getElementById(id).innerHTML =
+    '<option value="">— select donor —</option>' +
+    donors.map(d=>`<option value="${d._id}">${d.name}</option>`).join('');
+}
+
+// ════════════════════════════════════════════════════
+//  START
+// ════════════════════════════════════════════════════
+init();
+</script>
+</body>
+</html>

@@ -16,7 +16,7 @@ env/
 # Environment variables – never commit secrets
 .env
 
-# Streamlit
+# Streamlit – never commit real secrets
 .streamlit/secrets.toml
 
 # OS
